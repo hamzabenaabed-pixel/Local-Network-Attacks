@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة تدقيق أمان الشبكة المحلية</title>
+    <!-- استدعاء Bootstrap لدعم التنسيق والاتجاه العربي -->
+    <link rel="stylesheet" href="https://jsdelivr.net">
+    <!-- استدعاء مكتبة الأيقونات لتصميم احترافي -->
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        :root { 
+            --bg: #0b0e14; 
+            --card: #141a24; 
+            --accent: #00e676; 
+            --text: #ffffff; 
+        }
+        body { background-color: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
+        .card { background-color: var(--card); border: 1px solid #232d3f; border-radius: 10px; margin-bottom: 15px; }
+        .nav-tabs { border-bottom: 1px solid #232d3f; }
+        .nav-tabs .nav-link { color: #aaa; border: none; font-weight: bold; }
+        .nav-tabs .nav-link.active { background-color: var(--card); color: var(--accent); border-bottom: 3px solid var(--accent); }
+        .terminal-box { background-color: #05070a; color: #33ff33; font-family: monospace; height: 380px; overflow-y: auto; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-size: 0.85rem; border: 1px solid #1f3322; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark shadow mb-3">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1"><i class="fa-solid fa-shield-halved text-success me-2"></i> لوحة التحكم وفحص أداء الشبكة المحلية</span>
+        <span id="status" class="badge bg-secondary p-2">في انتظار أمرك</span>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- لوحة التحكم الإدارية والخيارات الجانبية -->
+        <div class="col-md-5">
+            <div class="card p-3 shadow-sm">
+                <label class="form-label fw-bold mb-2">إعدادات بطاقة الشبكة والهدف:</label>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="small text-muted">الواجهة (Interface):</label>
+                        <input type="text" id="interface" class="form-control bg-dark text-white text-center border-secondary" value="wlan0">
+                    </div>
+                    <div class="col-6">
+                        <label class="small text-muted">النطاق المستهدف (IP Range):</label>
+                        <input type="text" id="target_ip" class="form-control bg-dark text-white text-center border-secondary" value="192.168.1.0/24">
+                    </div>
+                </div>
+            </div>
+
+            <!-- تبويبات اختيار نظام التحليل والتدقيق -->
+            <ul class="nav nav-tabs mb-2" id="actionTabs" role="tablist">
+                <li class="nav-item"><button class="nav-link active" id="scan-tab" data-bs-toggle="tab" data-bs-target="#scan-content" type="button">فحص الأنظمة</button></li>
+                <li class="nav-item"><button class="nav-link" id="responder-tab" data-bs-toggle="tab" data-bs-target="#responder-content" type="button">تحليل البروتوكولات</button></li>
+                <li class="nav-item"><button class="nav-link" id="wifi-tab" data-bs-toggle="tab" data-bs-target="#wifi-content" type="button">التدقيق اللاسلكي</button></li>
+            </ul>
+
+            <div class="tab-content card p-3 shadow-sm">
+                <!-- تبويب فحص الأنظمة -->
+                <div class="tab-pane fade show active" id="scan-content">
+                    <p class="small text-muted">البحث عن الحواسب والهواتف النشطة داخل نطاق الشبكة والتحقق من المنافذ والخدمات المفتوحة عبر بروتوكول Nmap المعياري.</p>
+                    <button onclick="startTask('scan_network')" class="btn btn-success w-100 fw-bold">بدء فحص الشبكة النشط</button>
+                </div>
+                <!-- تبويب تحليل البروتوكولات -->
+                <div class="tab-pane fade" id="responder-content">
+                    <p class="small text-muted">مراقبة طلبات التسمية المحلية المفتوحة لمعالجة وتدقيق أخطاء التكوين والتهيئة في الشبكات المشتركة.</p>
+                    <button onclick="startTask('audit_protocols')" class="btn btn-primary w-100 fw-bold">تفعيل مراقبة بروتوكولات الاتصال</button>
+                </div>
+                <!-- تبويب التدقيق اللاسلكي -->
+                <div class="tab-pane fade" id="wifi-content">
+                    <p class="small text-muted">تحليل كفاءة التشفير اللاسلكي ونقاط الوصول القريبة ومراجعة معايير الأمان الافتراضية للشبكة اللاسلكية.</p>
+                    <button onclick="startTask('audit_wifi')" class="btn btn-warning w-100 text-dark fw-bold">بدء تدقيق المعايير اللاسلكية</button>
+                </div>
+            </div>
+
+            <button onclick="stopTask()" class="btn btn-danger w-100 mt-2 p-2 fw-bold shadow-sm"><i class="fa-solid fa-circle-stop me-2"></i> إيقاف فوري لكافة العمليات</button>
+        </div>
+
+        <!-- شاشة الطرفية لعرض المخرجات الفورية -->
+        <div class="col-md-7">
+            <div class="card p-3 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold"><i class="fa-solid fa-terminal me-2"></i> شاشة التحليل والمخرجات المباشرة (Live Feed)</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('terminal').innerHTML=''">مسح الشاشة</button>
+                </div>
+                <div id="terminal" class="terminal-box">بانتظار تفعيل مهمة من القائمة الجانبية لبدء استعراض البيانات الفورية...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- استدعاء ملفات جافاسكربت اللازمة لعمل التبويبات والتنقل بسلاسة -->
+<script src="https://jsdelivr.net"></script>
+<script>
+    let logInterval = null;
+
+    function startTask(type) {
+        const iface = document.getElementById('interface').value;
+        const target = document.getElementById('target_ip').value;
+        const statusBadge = document.getElementById('status');
+
+        statusBadge.className = "badge bg-warning text-dark p-2";
+        statusBadge.innerText = "جاري تفعيل العملية...";
+
+        fetch('/run_task', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ task_type: type, interface: iface, target_ip: target })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                statusBadge.className = "badge bg-success p-2";
+                statusBadge.innerText = "المهمة نشطة حالياً";
+                document.getElementById('terminal').innerHTML = "[+] تم استقبال وتفعيل الأمر بنجاح... جاري جلب البيانات من النظام...\n";
+                clearInterval(logInterval);
+                logInterval = setInterval(getLogs, 1000);
+            } else {
+                alert(data.message);
+                statusBadge.className = "badge bg-danger p-2";
+                statusBadge.innerText = "فشل في التنفيذ";
+            }
+        });
+    }
+
+    function stopTask() {
+        fetch('/stop_task', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            const statusBadge = document.getElementById('status');
+            statusBadge.className = "badge bg-secondary p-2";
+            statusBadge.innerText = "تم إيقاف العمليات";
+            clearInterval(logInterval);
+            alert(data.message);
+        });
+    }
+
+    function getLogs() {
+        fetch('/logs')
+        .then(res => res.json())
+        .then(data => {
+            const term = document.getElementById('terminal');
+            if (data.logs.length > 0) {
+                term.innerHTML = data.logs.join('');
+                term.scrollTop = term.scrollHeight; // النزول التلقائي لأسفل شاشة التيرمينال
+            }
+        });
+    }
+</script>
+</body>
+</html>
